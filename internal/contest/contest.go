@@ -16,7 +16,7 @@ type Contest struct {
 }
 
 func Load(contestPath string) (*Contest, error) {
-	f, err := os.Open(contestPath)
+	f, err := os.Open(filepath.Join(contestPath, "contest.yaml"))
 	if err != nil {
 		return nil, err
 	}
