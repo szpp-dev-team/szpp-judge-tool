@@ -13,9 +13,15 @@ import (
 )
 
 type Task struct {
-	dir    string
-	config *Config
-	logger *slog.Logger
+	Config    *Config
+	Statement string
+	dir       string
+	logger    *slog.Logger
+}
+
+type Testcase struct {
+	In  string
+	Out string
 }
 
 func Load(taskPath string) (*Task, error) {
@@ -30,15 +36,42 @@ func Load(taskPath string) (*Task, error) {
 		return nil, err
 	}
 
+	// TODO: check if the statement contains "問題文", "制約", "入力", "出力"
+	statement, err := os.ReadFile(filepath.Join(taskPath, "statement.md"))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Task{
-		dir:    taskPath,
-		config: &cfg,
-		logger: slog.Default().With(slog.String("task", taskPath)),
+		Config:    &cfg,
+		Statement: string(statement),
+		dir:       taskPath,
+		logger:    slog.Default().With(slog.String("task", taskPath)),
 	}, nil
 }
 
+func (t *Task) ReadTestcase(slug string) (*Testcase, error) {
+	in, err := os.ReadFile(filepath.Join(t.dir, "testcases", "in", slug))
+	if err != nil {
+		return nil, err
+	}
+	out, err := os.ReadFile(filepath.Join(t.dir, "testcases", "out", slug))
+	if err != nil {
+		return nil, err
+	}
+	return &Testcase{string(in), string(out)}, nil
+}
+
+func (t *Task) ReadChecker() (string, error) {
+	b, err := os.ReadFile(filepath.Join(t.dir, "checker.cpp"))
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
 func (t *Task) Validate() error {
-	if err := t.config.validate(); err != nil {
+	if err := t.Config.validate(); err != nil {
 		return err
 	}
 
@@ -96,7 +129,7 @@ func (t *Task) validateTestcase(inPath, outPath string) error {
 }
 
 func (t *Task) validateTestcases() error {
-	for _, testcase := range t.config.Testcases {
+	for _, testcase := range t.Config.Testcases {
 		inPath := filepath.Join("testcases", "in", testcase.Slug+".txt")
 		if !exists(inPath) {
 			return fmt.Errorf("file %s does not exist", inPath)

@@ -7,21 +7,21 @@ import (
 )
 
 type Config struct {
-	Title         string                  `yaml:"title" validate:"required"`                // 問題名
-	TimeLimitMs   uint32                  `yaml:"time_limit" validate:"gte=100,lte=10000"`  // 実行時間制限
-	MemoryLimitMb uint32                  `yaml:"memory_limit" validate:"gte=128,lte=1024"` // 実行メモリ制限
-	Difficulty    string                  `yaml:"difficulty" validate:"required"`           // 難易度
-	TestcaseSets  map[string]*TestcaseSet `yaml:"testcase_sets"`
-	Testcases     []*Testcase             `yaml:"testcases"`
+	Title         string                        `yaml:"title" validate:"required"`                // 問題名
+	TimeLimitMs   uint32                        `yaml:"time_limit" validate:"gte=100,lte=10000"`  // 実行時間制限
+	MemoryLimitMb uint32                        `yaml:"memory_limit" validate:"gte=128,lte=1024"` // 実行メモリ制限
+	Difficulty    string                        `yaml:"difficulty" validate:"required"`           // 難易度
+	TestcaseSets  map[string]*ConfigTestcaseSet `yaml:"testcase_sets"`
+	Testcases     []*ConfigTestcase             `yaml:"testcases"`
 }
 
-type TestcaseSet struct {
+type ConfigTestcaseSet struct {
 	ScoreRatio    uint32   `yaml:"score_ratio"` // 得点比率(総和が100になるように)
 	TestcaseSlugs []string `yaml:"list"`        // その TestcaseSet に属する Testcase の Slug 一覧
 	IsSample      bool     `yaml:"is_sample"`   // サンプルかどうか
 }
 
-type Testcase struct {
+type ConfigTestcase struct {
 	Slug        string `yaml:"name"`        // TestcaseSlug
 	Description string `yaml:"description"` // 説明
 }
