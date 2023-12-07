@@ -3,6 +3,8 @@ package task
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
+	"log"
 	"os"
 
 	"github.com/samber/lo"
@@ -17,6 +19,15 @@ import (
 var uploadCmd = &cobra.Command{
 	Use: "upload",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		storagePath := os.Getenv("STORAGE_PATH")
+		if storagePath == "" {
+			return errors.New("the environment value \"STORAGE_PATH\" must be set")
+		}
+		storage, err := pkgstorage.LoadOrInit(storagePath)
+		if err != nil {
+			return err
+		}
+
 		taskPath, err := os.Getwd()
 		if err != nil {
 			return err
@@ -37,13 +48,12 @@ var uploadCmd = &cobra.Command{
 			return err
 		}
 
-		difficulty := backendv1.Difficulty_value[controller.Config.Difficulty]
 		mutationTask := &backendv1.MutationTask{
 			Title:           controller.Config.Title,
 			Statement:       controller.Statement,
 			ExecTimeLimit:   int32(controller.Config.TimeLimitMs),
 			ExecMemoryLimit: int32(controller.Config.MemoryLimitMb),
-			Difficulty:      backendv1.Difficulty(difficulty),
+			Difficulty:      backendv1.Difficulty(backendv1.Difficulty_value[controller.Config.Difficulty]),
 			IsPublic:        false, // this field must be changed from only web
 			Checker:         checker,
 		}
@@ -85,7 +95,6 @@ var uploadCmd = &cobra.Command{
 		defer conn.Close()
 		c := backendv1.NewTaskServiceClient(conn)
 
-		storage := pkgstorage.New()
 		taskID, ok := storage.GetTaskID(taskPath)
 		if ok {
 			mutationTask.Id = lo.ToPtr(int32(taskID))
@@ -107,7 +116,7 @@ var uploadCmd = &cobra.Command{
 			}
 			cmd.Printf("task was created\n")
 			cmd.Println(resp)
-			taskID = int(resp.Task.Id)
+			storage.SetTaskID(taskPath, int(resp.Task.Id))
 		}
 
 		resp, err := c.SyncTestcaseSets(cmd.Context(), &backendv1.SyncTestcaseSetsRequest{
@@ -120,6 +129,11 @@ var uploadCmd = &cobra.Command{
 		}
 		cmd.Println("testcases and testcase_sets were upserted")
 		cmd.Println(resp)
+
+		if err := storage.Save(); err != nil {
+			log.Println(err)
+			os.Exit(1)
+		}
 
 		return nil
 	},
